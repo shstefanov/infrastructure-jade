@@ -12,32 +12,23 @@ var javascriptCompiler;
 
 module.exports = {
   config: function(config, callback){
-    if(!config.bundleParse){config.bundleParse = {};}
-    config.bundleParse['.jade'] = {
-      parse: function(body, filepath){
-        var raw_template = fs.readFileSync(filepath, 'utf8').toString();
-        var compiled_string = jade.compile(raw_template, {
-          debug:config.debug || false,
-          client:true, 
-          filename:filepath
-        })
-        .toString()
-        .replace(/jade\.debug/g, "debug")
-        .replace("debug = [{", "var debug = [{");
-        return compiled_string;
-      },
-      prepend:"var debug;",
-      append: "module.exports = anonymous;"
+    if(!config.bundlesOptions.parse){config.bundlesOptions.parse = {};}
+    config.bundlesOptions.parse['.jade'] = function(body, filepath){
+      return jade.compile(fs.readFileSync(filepath, 'utf8').toString(), {
+        debug:config.debug || false,
+        client:true, 
+        filename:filepath
+      })
+      .toString()
+      .replace(/jade\.debug/g, "debug")
+      .replace("jade.rethrow", "jade.runtime.rethrow")
+      .replace("function anonymous", "\n\nmodule.exports = function")
+      .replace("debug = [{", "var debug = [{")+";\nconsole.log(module.exports());";
     }
-    //setting up client javascript loading
-    if(!config.defaultJavascripts){config.defaultJavascripts = []}
-    config.defaultJavascripts.unshift("/core-libs/jade.js");
     callback(null, config);
-
-    //Add parser for browserify
   },
 
-  corescripts:["/core-libs/jade.js"],
+  coreLibs: ["/core-libs/jade.js"],
 
   configure: function(express, app, config){
 
@@ -48,10 +39,6 @@ module.exports = {
 
     app.jade = jade;
 
-    lessCompiler = require("./less-assets.jade");
-    cssCompiler = require("./css-assets.jade");
-    javascriptCompiler = require("./javascripts-assets.jade");
-
     //Set up view engine and views folder middleware here
     if(config.views){
       app.set('views', config.views);
@@ -60,23 +47,9 @@ module.exports = {
 
     //Register jade client lib to the app core-libs
     app.get("/core-libs/jade.js", function(req, res, next){
+      //FIXME - add mime type here
       res.end(clientJavascript);
     });
   },
 
-  assetRenderers: {
-    javascripts: function(javascripts){
-      return javascriptCompiler({javascripts:javascripts})+"\n\n";
-    },
-    styles: function(arr){
-      var less = [];
-      var css  = [];
-      arr.forEach(function(style){
-        var ext = style.split(".").pop();
-        if(ext == "less"){ less.push(style); }
-        if(ext = "css"){ css.push(style); }
-      });
-      return lessCompiler({less:less})+"\n\n"+cssCompiler({css:css});
-    }
-  }
 };
