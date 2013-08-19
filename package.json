@@ -1,7 +1,7 @@
 {
   "name": "infrastructure-jade",
   "version": "0.0.2",
-  "private": true,
+  "private": false,
   "dependencies": {
     "jade":"latest",
     "uglify-js": "latest"
