@@ -17,7 +17,6 @@ module.exports = {
     // Make parser to require jade templates clientside
     config.bundlesOptions.parse['.jade'] = function(body, filepath){
       var code =  jade.compile(fs.readFileSync(filepath, 'utf8').toString(), {
-        // debug:config.debug || false,
         client:true, 
         filename:filepath
       }).toString()
@@ -27,16 +26,12 @@ module.exports = {
       .replace("debug = [{", "var debug = [{")
       .replace(/\n\n/g, "\n")
       .replace(/\n;\n/g, "\n");
-      
 
       // https://github.com/mishoo/UglifyJS2
       if(!config.debug === true){
         var debug_stripped = code.replace(/(debug\.shift|debug\.unshift|jade\.rethrow).+;/gm, "");
-        console.log(debug_stripped);
         code = UglifyJS.minify(debug_stripped, {fromString: true}).code
-        
       }
-
       return code;
     }
     callback(null, config);
