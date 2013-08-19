@@ -1,8 +1,8 @@
 //Plugin for infrastructure
 var fs = require("fs");
 var jade = require("jade");
+var UglifyJS = require("uglify-js");
 
-var clientJavascript = fs.readFileSync(__dirname+"/client.js");
 
 //Registering extension to require jade file
 
@@ -13,17 +13,31 @@ var javascriptCompiler;
 module.exports = {
   config: function(config, callback){
     if(!config.bundlesOptions.parse){config.bundlesOptions.parse = {};}
+    
+    // Make parser to require jade templates clientside
     config.bundlesOptions.parse['.jade'] = function(body, filepath){
-      return jade.compile(fs.readFileSync(filepath, 'utf8').toString(), {
-        debug:config.debug || false,
+      var code =  jade.compile(fs.readFileSync(filepath, 'utf8').toString(), {
+        // debug:config.debug || false,
         client:true, 
         filename:filepath
-      })
-      .toString()
+      }).toString()
+      .replace(/;/g, ";\n")
       .replace(/jade\.debug/g, "debug")
-      .replace("jade.rethrow", "jade.runtime.rethrow")
       .replace("function anonymous", "\n\nmodule.exports = function")
-      .replace("debug = [{", "var debug = [{")+";\nconsole.log(module.exports());";
+      .replace("debug = [{", "var debug = [{")
+      .replace(/\n\n/g, "\n")
+      .replace(/\n;\n/g, "\n");
+      
+
+      // https://github.com/mishoo/UglifyJS2
+      if(!config.debug === true){
+        var debug_stripped = code.replace(/(debug\.shift|debug\.unshift|jade\.rethrow).+;/gm, "");
+        console.log(debug_stripped);
+        code = UglifyJS.minify(debug_stripped, {fromString: true}).code
+        
+      }
+
+      return code;
     }
     callback(null, config);
   },
@@ -32,6 +46,7 @@ module.exports = {
 
   configure: function(express, app, config){
 
+    // Make function to require jade templates serverside
     require.extensions['.jade'] = function(module, filename) {
       var raw_template = fs.readFileSync(filename, 'utf8').toString();
       module.exports = jade.compile(raw_template, {filename:filename, debug:config.debug});
@@ -45,10 +60,15 @@ module.exports = {
       app.set('view engine', 'jade');
     }
 
-    //Register jade client lib to the app core-libs
+    //Register jade client runtime to be accessible from browser
+
+    var client_code = fs.readFileSync(__dirname+"/client.js").toString();
+    if(!config.debug)
+      client_code = UglifyJS.minify(client_code, {fromString: true}).code;
+    
     app.get("/core-libs/jade.js", function(req, res, next){
-      //FIXME - add mime type here
-      res.end(clientJavascript);
+      res.set('Content-Type', 'text/javascript');
+      res.end(client_code);
     });
   },
 
