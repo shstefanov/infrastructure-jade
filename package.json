@@ -1,8 +1,13 @@
 {
   "name": "infrastructure-jade",
+<<<<<<< HEAD
   "version": "0.0.2",
+=======
+  "version": "0.1.1",
+>>>>>>> 8d06abf0331c4e564d6a019a8559763a96ad3a06
   "private": false,
   "dependencies": {
-    "jade":"latest"
+    "jade":"latest",
+    "uglify-js": "latest"
   }
 }
