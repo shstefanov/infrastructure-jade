@@ -12,6 +12,7 @@ var javascriptCompiler;
 
 module.exports = {
   config: function(config, callback){
+    if(!config.bundlesOptions){config.bundlesOptions = {};}
     if(!config.bundlesOptions.parse){config.bundlesOptions.parse = {};}
     
     // Make parser to require jade templates clientside
